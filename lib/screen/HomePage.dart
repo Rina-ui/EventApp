@@ -1,5 +1,6 @@
 import 'dart:async';
-
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 
 class Homepage extends StatefulWidget {
@@ -10,6 +11,7 @@ class Homepage extends StatefulWidget {
 }
 
 class _HomepageState extends State<Homepage> {
+  List events = [];
   final PageController _pageController = PageController();
   int _currentPage = 0;
   late Timer _timer;
@@ -38,6 +40,8 @@ class _HomepageState extends State<Homepage> {
         curve: Curves.easeInOut,
       );
     });
+
+    fetchEvents();
   }
 
   @override
@@ -46,6 +50,26 @@ class _HomepageState extends State<Homepage> {
     _timer.cancel();
     super.dispose();
   }
+
+  Future<void> fetchEvents() async {
+    final response = await http.get(
+    Uri.parse('https://www.eventbriteapi.com/v3/events/search/?q=music'),
+      headers: {
+      'Authorization': 'Bearer RA6KINIJRKCF3XVITBE5 '
+      }
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      print('Nombre d\'événements : ${data['events'].length}');
+      setState(() {
+        events = data['events'];
+      });
+    }else {
+      print('Erreur: ${response.statusCode}');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -74,11 +98,22 @@ class _HomepageState extends State<Homepage> {
               ),
               Expanded(
                 flex: 2,
-                  child: Column(
-                    children: [
-
-                    ],
-                  )
+                  child: events.isEmpty
+                      ? Center(child: CircularProgressIndicator()) //loader
+                      : ListView.builder(
+                    itemCount: events.length,
+                    itemBuilder: (context, index) {
+                      final event = events[index];
+                      return ListTile(
+                        title: Text(event['name']['text'] ?? 'Sans titre'),
+                        subtitle: Text(
+                          event['description']['text'] ?? 'Sans description',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    },
+                  ),
               ),
             ],
           )
